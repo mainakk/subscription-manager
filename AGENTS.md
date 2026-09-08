@@ -100,29 +100,21 @@ External APIs and the database are authoritative for factual state.
 
 # Architecture
 
-Use this conceptual architecture:
+Use this layered architecture (`docs/architecture.md` is authoritative
+and supersedes this sketch):
 
 ```
-UI
+UI (App Router: Server Components + minimal Client Components)
   |
   v
-Application/domain logic
+Application logic (Route Handlers / Server Actions, lib/)
   |
-  +-----------------------+
-  |                       |
-  v                       v
-Source repository     Platform adapters
-                          |
-                 +--------+--------+
-                 |        |        |
-              YouTube    RSS     Reddit...
-                         
+  +---> Source repository (Supabase Postgres via lib/supabase/*, lib/db/*)
+  +---> Platform adapters (lib/platforms/*; YouTube first)
+  +---> AI enrichment layer (validated structured output only)
   |
   v
-AI enrichment/recommendation layer
-  |
-  v
-PostgreSQL / Supabase
+PostgreSQL (Supabase, RLS-enforced)
 ```
 
 The UI should not directly call YouTube APIs.
@@ -131,25 +123,31 @@ The UI should not directly handle OAuth tokens.
 
 External platform logic belongs behind platform adapters.
 
+Remote images from platforms (e.g. YouTube thumbnails) must be
+allowlisted in `next.config.ts` (`images.remotePatterns`); do not bypass
+the image optimizer with unallowlisted hosts.
+
 ---
 
 # Technology
 
-Use:
+Use (pinned in `package.json`; do not assume older APIs):
 
-* Next.js
-* TypeScript
-* React
-* Tailwind CSS
-* shadcn/ui
+* Next.js 16 (App Router)
+* TypeScript 5 (`strict`, so `noImplicitAny` applies)
+* React 19
+* Tailwind CSS v4 (CSS-first config in `app/globals.css`)
+* shadcn/ui (`components.json`, `lib/utils.ts`)
 * Supabase
 
   * PostgreSQL
   * Authentication
+  * SSR helpers (`@supabase/ssr`) for cookie sessions
 * YouTube Data API
 * Google OAuth
 * OpenAI-compatible LLM API for AI enrichment
 * Vercel-compatible deployment
+* Vitest for unit tests (`tests/`, `npm run test`)
 
 Prefer server-side code for secrets, OAuth, external API calls, and privileged database operations.
 
@@ -157,36 +155,62 @@ Use strict TypeScript.
 
 Avoid introducing additional infrastructure unless there is a demonstrated need.
 
+Next.js 16 notes (past failures came from assuming older conventions):
+
+* Session handling lives in `proxy.ts` (`export async function proxy`),
+  not `middleware.ts` / `middleware`.
+* `searchParams`, `params`, and `cookies()` are async — always `await` them.
+* There is no global `LayoutProps` type — type layout props explicitly
+  (e.g. `{ children: ReactNode }`).
+
 ---
 
 # Repository Structure
 
-Aim for a structure similar to:
+Aim for a structure similar to (this mirrors the actual repo; the
+previous sketch listed directories that were never created):
 
 ```
 app/
+  api/
+    youtube/
+    sources/
+  dashboard/
+  history/
+  login/
   ...
 
 components/
-  ...
+  connection/
+  layout/
+  sources/
+  ui/
 
 lib/
-  ai/
-  auth/
+  categories.ts
+  validation.ts
+  utils.ts
   db/
   platforms/
     youtube/
-    rss/
   sources/
-  validation/
+  supabase/
+  youtube/
 
 supabase/
   migrations/
+
+tests/
+  fixtures/
 
 docs/
   product.md
   architecture.md
   database.md
+
+proxy.ts
+components.json
+vitest.config.ts
 
 public/
 
@@ -345,6 +369,17 @@ Do not log OAuth tokens.
 
 Do not include secrets in error messages.
 
+Decided and implemented (do not re-litigate without a new requirement):
+
+* Refresh tokens are encrypted at rest with app-level AES-256-GCM
+  (`lib/youtube/token-crypto.ts`), keyed by `YOUTUBE_TOKEN_ENCRYPTION_KEY`
+  (32 bytes, base64). No Supabase Vault, no extra infrastructure.
+* Access tokens are never persisted. Each sync/unsubscribe run refreshes
+  in memory via `refresh_token` grant and discards the access token after.
+* Requested YouTube scopes are minimal: `youtube.readonly` and
+  `youtube.force-ssl` only. Identity stays with Supabase Auth; never add
+  `openid`/`email`/`profile` scopes to the YouTube flow.
+
 ---
 
 # External APIs
@@ -408,6 +443,17 @@ Do not report this as:
 "17 unsubscribed"
 ```
 
+Decided bulk semantics (implemented in `lib/sources/unsubscribe.ts`):
+
+* Max 50 source IDs per request; larger selections must be split client-side.
+* A YouTube 404 (`subscriptionNotFound`) counts as success with an
+  `already_gone` note — the goal state (not subscribed) already holds.
+* Requested IDs with no row owned by the caller are reported as
+  `unknownSourceIds` and never written to the audit table (whose
+  `source_id` FK requires a real row).
+* Local state (`status = 'unsubscribed'`) changes only after confirmed
+  external success, per item.
+
 ---
 
 # Database
@@ -416,9 +462,25 @@ Use migrations.
 
 Do not manually mutate production database state through ad-hoc application code.
 
+Migration workflow (remote project; there is no local Docker here):
+
+* `npx supabase migration list` — shows pending vs applied migrations.
+* `npx supabase db push` — applies pending `supabase/migrations/*.sql`.
+* `npx supabase db query --linked "<read-only SQL>"` — verifies tables,
+  rows, constraints, and RLS via the Management API. Prefer this over a
+  direct Postgres connection, which needs `SUPABASE_DB_PASSWORD`.
+
 Database schema should enforce ownership relationships wherever practical.
 
 Users must only be able to access their own sources, connections, recommendations, and actions.
+
+Sync reconciliation invariant (implemented in
+`lib/platforms/youtube/normalize.ts`): re-imports upsert everything
+*except* `status`. Status changes only via the seen-set transition —
+reactivate reappearing rows, mark unseen active rows
+`unavailable_externally`, and never touch app-unsubscribed rows unless
+they reappear on YouTube. A sync must never resurrect locally-removed
+rows.
 
 Prefer normalized relational data over storing large arbitrary JSON blobs.
 
@@ -445,6 +507,18 @@ Validate external data at system boundaries.
 Use shared schemas/types where appropriate.
 
 Do not duplicate important domain types across server and client.
+
+Strict-mode notes (all three caused real `tsc --noEmit` failures):
+
+* Supabase SSR cookie callbacks need explicit parameter types — import
+  `type { CookieOptions }` from `@supabase/ssr` and annotate
+  `{ name: string; value: string; options: CookieOptions }[]`.
+* Union-typed fetch mocks (`string | URL | Request`) need narrowing
+  before touching `.url` — `URL` has no such property.
+* `import "server-only"` throws at import time under Vitest's Node
+  runtime. Keep it only in modules tests never import (e.g.
+  `lib/supabase/admin.ts`); keep `lib/youtube/*` importable and mark
+  them server-only by convention comment instead.
 
 ---
 
@@ -488,6 +562,27 @@ Before implementing a significant feature:
 6. Inspect the result.
 7. Report what changed and what was verified.
 
+Verify with (in this order; all must pass):
+
+```
+npm run typecheck   # tsc --noEmit
+npm run lint        # eslint
+npm run test        # vitest run
+npm run build       # production build, catches route/prerender errors
+```
+
+Windows shell notes (this repo is developed on PowerShell 5.1):
+
+* `npm`/`npx` resolve to blocked `.ps1` shims — always invoke via
+  `cmd /c "npm ..."` / `cmd /c "npx ..."`.
+* Use `curl.exe` (not `Invoke-WebRequest`) when asserting HTTP status
+  codes — PowerShell follows or swallows redirects inconsistently.
+* `next dev` child processes survive `Stop-Process` on the parent.
+  Before a smoke test, kill all stale servers
+  (`Get-Process -Name node | Stop-Process -Force`) or the new server
+  exits with "already running" and probes hit stale code.
+* Never use `$home` as a variable name — it is read-only.
+
 Do not rewrite unrelated code.
 
 Do not introduce abstractions speculatively.
@@ -499,6 +594,10 @@ Do not add dependencies unless necessary.
 # Testing
 
 Business logic should have tests.
+
+Tests run with Vitest (`npm run test` / `vitest run`); suites live in
+`tests/` with fixtures in `tests/fixtures/`. Keep pure orchestration
+testable via injected dependencies (see `lib/sources/unsubscribe.ts`).
 
 Prioritize tests for:
 
@@ -584,6 +683,8 @@ When asked to implement something:
 * Never silently weaken security.
 * Never remove tests just to make them pass.
 * Never disable linting/type checking to avoid fixing an issue.
+* Never print secret values (env contents, tokens, keys) in outputs,
+  logs, or error reports — key names only when checking configuration.
 
 When you discover a better architecture than the current one, explain it before making a large refactor.
 
@@ -606,6 +707,8 @@ For a feature to be considered complete:
 * Secrets are protected.
 * The implementation matches the documented architecture.
 * No unrelated behavior was broken.
+* Schema changes are applied via the migration workflow and verified
+  against the linked project (tables, seed rows, constraints, RLS).
 
 <!-- BEGIN:nextjs-agent-rules -->
 
