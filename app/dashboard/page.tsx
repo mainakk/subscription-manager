@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AutoSync } from "@/components/connection/AutoSync";
+import { DeleteDataButton } from "@/components/connection/DeleteDataButton";
 import { DisconnectButton } from "@/components/connection/DisconnectButton";
 import { SyncButton } from "@/components/connection/SyncButton";
 import { AppNav } from "@/components/layout/AppNav";
@@ -10,6 +11,7 @@ import { SourcesExplorer } from "@/components/sources/SourcesExplorer";
 import { buttonVariants } from "@/components/ui/button";
 import { getAiConfig } from "@/lib/ai/enrich";
 import { categoryNameForSlug } from "@/lib/categories";
+import { KNOWN_SYNC_ERROR_CODES, requestErrorMessage } from "@/lib/error-messages";
 import type {
   PlatformConnectionRow,
   SourceEnrichmentRow,
@@ -46,6 +48,17 @@ function OAuthBanner({ code }: { code: string }) {
   return (
     <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
       Could not connect YouTube. Please try again.
+    </div>
+  );
+}
+
+function SyncBanner({ code }: { code: string }) {
+  const message = KNOWN_SYNC_ERROR_CODES.includes(code)
+    ? requestErrorMessage(code)
+    : "Import failed. Check the connection below and try syncing again.";
+  return (
+    <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
+      {message}
     </div>
   );
 }
@@ -162,11 +175,7 @@ export default async function DashboardPage({
 
         <div className="mt-6 flex flex-col gap-4">
           {params.oauth ? <OAuthBanner code={params.oauth} /> : null}
-          {params.sync === "error" ? (
-            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">
-              Import failed. Check the connection below and try syncing again.
-            </div>
-          ) : null}
+          {params.sync ? <SyncBanner code={params.sync} /> : null}
 
           <section className="rounded-lg border border-border bg-card p-4">
             {connected ? (
@@ -176,7 +185,7 @@ export default async function DashboardPage({
                   <p className="text-sm text-muted-foreground">
                     Last sync: {formatSyncTime(connection?.last_sync_at ?? null)}
                     {connection?.last_error
-                      ? ` · last error: ${connection.last_error}`
+                      ? ` · ${requestErrorMessage(connection.last_error)}`
                       : ""}
                   </p>
                 </div>
@@ -211,6 +220,21 @@ export default async function DashboardPage({
               <EnrichPanel summary={summary} aiConfigured={aiConfigured} />
               <SourcesExplorer sources={sources} meta={meta} />
             </>
+          ) : null}
+
+          {connected || sources.length > 0 ? (
+            <section className="rounded-lg border border-border bg-card p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-medium">Data & privacy</p>
+                  <p className="text-sm text-muted-foreground">
+                    Remove your imported sources, AI analysis, history, and
+                    connection from this app.
+                  </p>
+                </div>
+                <DeleteDataButton sourceCount={sources.length} />
+              </div>
+            </section>
           ) : null}
         </div>
       </div>

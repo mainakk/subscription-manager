@@ -4,21 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-
-function friendlyError(code: string): string {
-  switch (code) {
-    case "not_connected":
-      return "YouTube is not connected yet.";
-    case "reconnect_required":
-      return "YouTube access expired. Disconnect and reconnect.";
-    case "quota_exhausted":
-      return "YouTube quota exhausted. Try again later.";
-    case "unauthenticated":
-      return "Please sign in again.";
-    default:
-      return "Import failed. Try again.";
-  }
-}
+import { requestErrorMessage } from "@/lib/error-messages";
 
 export function SyncButton({ label = "Sync now" }: { label?: string }) {
   const router = useRouter();
@@ -34,7 +20,7 @@ export function SyncButton({ label = "Sync now" }: { label?: string }) {
         const body = (await res.json().catch(() => null)) as {
           error?: string;
         } | null;
-        setError(friendlyError(body?.error ?? "sync_failed"));
+        setError(requestErrorMessage(body?.error ?? "sync_failed"));
       } else {
         router.refresh();
       }

@@ -5,25 +5,14 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
+  enrichFailureMessage,
+  requestErrorMessage,
+} from "@/lib/error-messages";
+import {
   shouldContinueEnrichment,
   type EnrichFailure,
 } from "@/lib/sources/enrich";
 import type { CleanupSummary } from "@/lib/sources/summary";
-
-function enrichErrorMessage(code: string): string {
-  switch (code) {
-    case "ai_not_configured":
-      return "AI is not configured on the server.";
-    case "not_connected":
-      return "YouTube is not connected.";
-    case "reconnect_required":
-      return "YouTube access expired. Disconnect and reconnect, then try again.";
-    case "quota_exhausted":
-      return "YouTube quota exhausted. Try again later.";
-    default:
-      return "Analysis failed. Try again.";
-  }
-}
 
 interface EnrichResponse {
   succeeded: number;
@@ -71,7 +60,7 @@ export function EnrichPanel({
           const body = (await res.json().catch(() => null)) as {
             error?: string;
           } | null;
-          setError(enrichErrorMessage(body?.error ?? "enrich_failed"));
+          setError(requestErrorMessage(body?.error ?? "enrich_failed"));
           break;
         }
         const out = (await res.json()) as EnrichResponse;
@@ -149,7 +138,7 @@ export function EnrichPanel({
           <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
             {runFailures.slice(0, 10).map((f) => (
               <li key={f.sourceId}>
-                {f.name} — <span className="font-mono text-xs">{f.errorCode}</span>
+                {f.name} — {enrichFailureMessage(f.errorCode)}
                 {f.retryable ? " (retryable)" : ""}
               </li>
             ))}

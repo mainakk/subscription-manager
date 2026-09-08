@@ -3,10 +3,13 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
+import { KNOWN_SYNC_ERROR_CODES } from "@/lib/error-messages";
+
 /**
  * Runs one import right after a fresh OAuth connection
  * (/dashboard?connected=1), then drops the query param.
- * Failures redirect to ?sync=error so a refresh cannot loop.
+ * Failures redirect to ?sync=<code> (allowlisted) so the dashboard can
+ * explain that specific failure; a refresh cannot loop.
  */
 export function AutoSync() {
   const router = useRouter();
@@ -16,8 +19,18 @@ export function AutoSync() {
     if (started.current) return;
     started.current = true;
     fetch("/api/youtube/sync", { method: "POST" })
-      .then((res) => {
-        router.replace(res.ok ? "/dashboard" : "/dashboard?sync=error");
+      .then(async (res) => {
+        if (res.ok) {
+          router.replace("/dashboard");
+        } else {
+          const body = (await res.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          const code = body?.error;
+          router.replace(
+            `/dashboard?sync=${code && KNOWN_SYNC_ERROR_CODES.includes(code) ? code : "error"}`,
+          );
+        }
         router.refresh();
       })
       .catch(() => {

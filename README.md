@@ -148,6 +148,12 @@ AI is an enrichment and advisory layer — never the source of truth. External A
 
 See [`docs/architecture.md`](docs/architecture.md) for details.
 
+## Deploying
+
+Vercel + hosted Supabase, no extra infrastructure. Follow the runbook in
+[`docs/deploy.md`](docs/deploy.md) (env vars, OAuth redirect URI, Supabase
+Auth URLs, post-deploy smoke check).
+
 ## Development
 
 ```bash
