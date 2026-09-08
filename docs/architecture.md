@@ -40,3 +40,28 @@ adapter interface + registry, Zod validation schemas, Vitest suites.
 Deferred to M1+: YouTube OAuth, sync, dashboard list, bulk unsubscribe,
 AI enrichment calls, background jobs (none in MVP; synchronous paginated
 sync while libraries are small).
+
+## M1 scope (YouTube connection + import + dashboard)
+
+- OAuth: `GET /api/youtube/connect` builds the Google consent URL
+  (minimal scopes `youtube.readonly` + `youtube.force-ssl`, offline access,
+  single-use `state` cookie); `GET /api/youtube/callback` validates state,
+  exchanges the code server-side, and stores only the AES-256-GCM encrypted
+  refresh token (`lib/youtube/token-crypto.ts`, key from
+  `YOUTUBE_TOKEN_ENCRYPTION_KEY`). No openid/email/profile scopes: identity
+  stays with Supabase Auth.
+- Sync: `POST /api/youtube/sync` refreshes the access token per run (never
+  persisted), walks `subscriptions.list` pages, enriches each page via
+  batched `channels.list`, and upserts `sources` by
+  `(user_id, platform, external_id)`. Status transitions are reconciled, not
+  overwritten: unseen active rows become `unavailable_externally`,
+  reappearing rows reactivate. `subscriptions.delete` exists in the client
+  for M2; no unsubscribe route in M1.
+- Dashboard: `/dashboard` (server component + RLS reads) with connection
+  panel, one-shot auto-import after connect, manual sync, disconnect
+  (best-effort remote revocation + local token wipe), and a plain source
+  list. Search/filter/sort/selection/bulk actions are M2.
+- YouTube HTTP lives behind `lib/platforms/youtube/client.ts` with typed
+  errors (`unauthenticated` / `quota_exhausted` / `rate_limited` /
+  `not_found`), retry for transient failures only, and fixture-driven unit
+  tests. Adapter registry wiring is deferred to M2 (first multi-scope use).
