@@ -1,0 +1,119 @@
+{
+  "subscriptionsPages": [
+    {
+      "items": [
+        {
+          "kind": "youtube#subscription",
+          "id": "SUBSCRIPTION-ID-1",
+          "snippet": {
+            "publishedAt": "2020-03-14T10:00:00Z",
+            "title": "Bourbon Moth Woodworking",
+            "description": "Subscription snippet description (ignored).",
+            "resourceId": { "kind": "youtube#channel", "channelId": "UCwood1" },
+            "channelId": "UCviewer",
+            "thumbnails": {
+              "default": { "url": "https://yt3.ggpht.com/sub1-default" },
+              "medium": { "url": "https://yt3.ggpht.com/sub1-medium" }
+            }
+          },
+          "contentDetails": { "totalItemCount": 412, "newItemCount": 3 }
+        },
+        {
+          "kind": "youtube#subscription",
+          "id": "SUBSCRIPTION-ID-2",
+          "snippet": {
+            "publishedAt": "2021-06-01T12:00:00Z",
+            "title": "Example Cooking Channel",
+            "description": "",
+            "resourceId": { "kind": "youtube#channel", "channelId": "UCcook2" },
+            "channelId": "UCviewer",
+            "thumbnails": {
+              "default": { "url": "https://yt3.ggpht.com/sub2-default" }
+            }
+          },
+          "contentDetails": { "totalItemCount": 98, "newItemCount": 0 }
+        }
+      ],
+      "nextPageToken": "PAGE2TOKEN",
+      "pageInfo": { "totalResults": 3, "resultsPerPage": 2 }
+    },
+    {
+      "items": [
+        {
+          "kind": "youtube#subscription",
+          "id": "SUBSCRIPTION-ID-3",
+          "snippet": {
+            "publishedAt": "not-a-date",
+            "title": "Silent Tech Channel",
+            "description": "",
+            "resourceId": { "kind": "youtube#channel", "channelId": "UCtech3" },
+            "channelId": "UCviewer"
+          },
+          "contentDetails": {}
+        }
+      ],
+      "pageInfo": { "totalResults": 3, "resultsPerPage": 1 }
+    }
+  ],
+  "channels": [
+    {
+      "kind": "youtube#channel",
+      "id": "UCwood1",
+      "snippet": {
+        "title": "Bourbon Moth Woodworking",
+        "description": "Traditional hardwood furniture and joinery shop projects.",
+        "publishedAt": "2015-01-20T00:00:00Z",
+        "country": "US",
+        "thumbnails": {
+          "default": { "url": "https://yt3.ggpht.com/wood1-default" },
+          "medium": { "url": "https://yt3.ggpht.com/wood1-medium" },
+          "high": { "url": "https://yt3.ggpht.com/wood1-high" }
+        }
+      },
+      "statistics": {
+        "viewCount": "12345678",
+        "subscriberCount": "850000",
+        "hiddenSubscriberCount": false,
+        "videoCount": "412"
+      },
+      "contentDetails": {
+        "relatedPlaylists": { "likes": "", "uploads": "UUwood1uploads" }
+      }
+    },
+    {
+      "kind": "youtube#channel",
+      "id": "UCcook2",
+      "snippet": {
+        "title": "Example Cooking Channel",
+        "description": "   ",
+        "publishedAt": "2019-11-02T00:00:00Z",
+        "thumbnails": {
+          "default": { "url": "https://yt3.ggpht.com/cook2-default" }
+        }
+      },
+      "statistics": {
+        "viewCount": "999",
+        "subscriberCount": "1200",
+        "hiddenSubscriberCount": false,
+        "videoCount": "not-a-number"
+      },
+      "contentDetails": {
+        "relatedPlaylists": { "uploads": "UUcook2uploads" }
+      }
+    },
+    {
+      "kind": "youtube#channel",
+      "id": "UCtech3",
+      "snippet": {
+        "title": "Silent Tech Channel",
+        "publishedAt": "2022-02-02T00:00:00Z"
+      },
+      "statistics": {
+        "subscriberCount": "5000",
+        "hiddenSubscriberCount": true,
+        "videoCount": "75"
+      },
+      "contentDetails": {}
+    }
+  ]
+}

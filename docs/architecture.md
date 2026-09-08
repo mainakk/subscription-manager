@@ -65,3 +65,21 @@ sync while libraries are small).
   errors (`unauthenticated` / `quota_exhausted` / `rate_limited` /
   `not_found`), retry for transient failures only, and fixture-driven unit
   tests. Adapter registry wiring is deferred to M2 (first multi-scope use).
+
+## M2 scope (browse + safe bulk unsubscribe + history)
+
+- Explorer: `SourcesExplorer` (client) over server-fetched rows —
+  multi-token search (name/description/URL), platform + status filters,
+  name/newest/oldest sorts, all client-side. Category/recommendation
+  filters wait for M3 enrichment data. Only `active` sources are
+  selectable.
+- Bulk unsubscribe: select → review dialog (capability warning + explicit
+  confirm) → `POST /api/sources/unsubscribe` (Zod body, max 50, ownership
+  re-validated server-side) → `executeBulkUnsubscribe`
+  (`lib/sources/unsubscribe.ts`) runs external deletes sequentially via the
+  registered adapter, audits every item to `user_actions`, updates local
+  state only on confirmed success, and reports per-item outcomes with
+  retry for retryable failures. Already-gone (404) counts as success with
+  a note; unknown ids are reported without audit rows (FK).
+- History: `/history` lists `user_action_batches` with per-batch item
+  detail. No schema changes in M2 (0001 tables as designed).
