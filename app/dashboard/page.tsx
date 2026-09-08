@@ -5,9 +5,19 @@ import { AutoSync } from "@/components/connection/AutoSync";
 import { DisconnectButton } from "@/components/connection/DisconnectButton";
 import { SyncButton } from "@/components/connection/SyncButton";
 import { AppNav } from "@/components/layout/AppNav";
+import { EnrichPanel } from "@/components/sources/EnrichPanel";
 import { SourcesExplorer } from "@/components/sources/SourcesExplorer";
 import { buttonVariants } from "@/components/ui/button";
-import type { PlatformConnectionRow, SourceRow } from "@/lib/db/types";
+import { getAiConfig } from "@/lib/ai/enrich";
+import { categoryNameForSlug } from "@/lib/categories";
+import type {
+  PlatformConnectionRow,
+  SourceEnrichmentRow,
+  SourceRecommendationRow,
+  SourceRow,
+} from "@/lib/db/types";
+import type { EnrichmentMeta } from "@/lib/sources/filter";
+import { buildCleanupSummary } from "@/lib/sources/summary";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
@@ -92,6 +102,45 @@ export default async function DashboardPage({
 
   const connected = connection?.status === "connected";
 
+  const meta: EnrichmentMeta = { enrichments: {}, recommendations: {} };
+  if (connected && sources.length > 0) {
+    const sourceIds = sources.map((s) => s.id);
+    const { data: enrichmentData } = await supabase
+      .from("source_enrichments")
+      .select("*")
+      .in("source_id", sourceIds);
+    for (const row of ((enrichmentData ?? []) as SourceEnrichmentRow[])) {
+      const categoryName = categoryNameForSlug(row.category_slug);
+      if (!categoryName) continue;
+      meta.enrichments[row.source_id] = {
+        categorySlug: row.category_slug,
+        categoryName,
+        subcategory: row.subcategory,
+        topics: row.topics,
+        description: row.description,
+        confidence: row.confidence,
+      };
+    }
+    const { data: recommendationData } = await supabase
+      .from("source_recommendations")
+      .select("source_id,verdict,reason,created_at")
+      .in("source_id", sourceIds)
+      .order("created_at", { ascending: false });
+    for (const row of ((recommendationData ?? []) as Pick<
+      SourceRecommendationRow,
+      "source_id" | "verdict" | "reason" | "created_at"
+    >[])) {
+      if (!meta.recommendations[row.source_id]) {
+        meta.recommendations[row.source_id] = {
+          verdict: row.verdict,
+          reason: row.reason,
+        };
+      }
+    }
+  }
+  const summary = buildCleanupSummary(sources, meta);
+  const aiConfigured = getAiConfig() !== null;
+
   return (
     <div>
       <AppNav />
@@ -157,7 +206,12 @@ export default async function DashboardPage({
 
           {params.connected === "1" && connected ? <AutoSync /> : null}
 
-          {connected ? <SourcesExplorer sources={sources} /> : null}
+          {connected ? (
+            <>
+              <EnrichPanel summary={summary} aiConfigured={aiConfigured} />
+              <SourcesExplorer sources={sources} meta={meta} />
+            </>
+          ) : null}
         </div>
       </div>
     </div>

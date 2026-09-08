@@ -1,8 +1,10 @@
+import { CATEGORIES, categorySlug } from "@/lib/categories";
 import type {
   PlatformFilter,
   SourceSort,
   SourceFilters,
   StatusFilter,
+  VerdictFilter,
 } from "@/lib/sources/filter";
 
 interface FilterBarProps {
@@ -55,7 +57,7 @@ export function FilterBar({ filters, onChange, visibleCount, totalCount }: Filte
             className="h-9 rounded-md border border-input bg-background px-3 text-sm font-normal shadow-sm outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
           />
         </label>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <Select
             id="platform-filter"
             label="Platform"
@@ -81,6 +83,33 @@ export function FilterBar({ filters, onChange, visibleCount, totalCount }: Filte
             <option value="unavailable_externally">Unavailable</option>
           </Select>
           <Select
+            id="category-filter"
+            label="Category"
+            value={filters.category}
+            onChange={(value) => onChange({ ...filters, category: value })}
+          >
+            <option value="all">All categories</option>
+            {CATEGORIES.map((name) => (
+              <option key={name} value={categorySlug(name)}>
+                {name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            id="recommendation-filter"
+            label="Recommendation"
+            value={filters.verdict}
+            onChange={(value) =>
+              onChange({ ...filters, verdict: value as VerdictFilter })
+            }
+          >
+            <option value="all">All</option>
+            <option value="KEEP">Keep</option>
+            <option value="REVIEW">Review</option>
+            <option value="UNSUBSCRIBE">Unsubscribe</option>
+            <option value="unanalyzed">Not analyzed yet</option>
+          </Select>
+          <Select
             id="sort-order"
             label="Sort"
             value={filters.sort}
@@ -89,6 +118,8 @@ export function FilterBar({ filters, onChange, visibleCount, totalCount }: Filte
             }
           >
             <option value="name">Name A–Z</option>
+            <option value="category">Category</option>
+            <option value="recommendation">Recommendation</option>
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
           </Select>

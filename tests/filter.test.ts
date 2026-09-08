@@ -5,6 +5,7 @@ import {
   DEFAULT_FILTERS,
   filterSources,
   sortSources,
+  type EnrichmentMeta,
 } from "@/lib/sources/filter";
 
 function row(overrides: Partial<SourceRow> & { id: string; name: string }): SourceRow {
@@ -97,5 +98,84 @@ describe("sortSources", () => {
     const input = [...sources];
     sortSources(input, "newest");
     expect(input.map((s) => s.id)).toEqual(["a", "b", "c"]);
+  });
+});
+
+const meta: EnrichmentMeta = {
+  enrichments: {
+    a: {
+      categorySlug: "woodworking",
+      categoryName: "Woodworking",
+      subcategory: "Furniture",
+      topics: ["joinery", "hand tools"],
+      description: "Builds furniture.",
+      confidence: 0.9,
+    },
+    b: {
+      categorySlug: "cooking",
+      categoryName: "Cooking",
+      subcategory: "Sourdough",
+      topics: ["sourdough", "bread baking"],
+      description: "Bakes bread.",
+      confidence: 0.8,
+    },
+  },
+  recommendations: {
+    a: { verdict: "KEEP", reason: "Active." },
+    b: { verdict: "UNSUBSCRIBE", reason: "Stale." },
+  },
+};
+
+describe("enrichment-aware filtering", () => {
+  it("searches topics, subcategories, and category slugs", () => {
+    expect(
+      filterSources(sources, { ...DEFAULT_FILTERS, query: "sourdough" }, meta).map(
+        (s) => s.id,
+      ),
+    ).toEqual(["b"]);
+    expect(
+      filterSources(sources, { ...DEFAULT_FILTERS, query: "furniture joinery" }, meta).map(
+        (s) => s.id,
+      ),
+    ).toEqual(["a"]);
+  });
+
+  it("filters by category slug", () => {
+    expect(
+      filterSources(sources, { ...DEFAULT_FILTERS, category: "cooking" }, meta).map(
+        (s) => s.id,
+      ),
+    ).toEqual(["b"]);
+  });
+
+  it("filters by verdict and surfaces unanalyzed sources", () => {
+    expect(
+      filterSources(sources, { ...DEFAULT_FILTERS, verdict: "UNSUBSCRIBE" }, meta).map(
+        (s) => s.id,
+      ),
+    ).toEqual(["b"]);
+    expect(
+      filterSources(sources, { ...DEFAULT_FILTERS, verdict: "unanalyzed" }, meta).map(
+        (s) => s.id,
+      ),
+    ).toEqual(["c"]);
+  });
+});
+
+describe("enrichment-aware sorting", () => {
+  it("sorts by category with unenriched rows last", () => {
+    expect(sortSources(sources, "category", meta).map((s) => s.id)).toEqual([
+      "b",
+      "a",
+      "c",
+    ]);
+  });
+
+  it("sorts cleanup-first by verdict with unanalyzed rows last", () => {
+    expect(sortSources(sources, "recommendation", meta).map((s) => s.id)).toEqual([
+      "b",
+      "a",
+      "c",
+    ]);
   });
 });

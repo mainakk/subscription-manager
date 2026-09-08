@@ -1,6 +1,7 @@
 import {
   ChannelsListResponseSchema,
   MyChannelResponseSchema,
+  PlaylistItemsListResponseSchema,
   SubscriptionsListResponseSchema,
   type ChannelItem,
   type SubscriptionItem,
@@ -12,6 +13,7 @@ import type {
 
 const SUBSCRIPTIONS_URL = "https://www.googleapis.com/youtube/v3/subscriptions";
 const CHANNELS_URL = "https://www.googleapis.com/youtube/v3/channels";
+const PLAYLIST_ITEMS_URL = "https://www.googleapis.com/youtube/v3/playlistItems";
 
 export type FetchFn = typeof fetch;
 export type SleepFn = (ms: number) => Promise<void>;
@@ -263,6 +265,46 @@ export async function deleteSubscription(
     },
     options,
   );
+}
+
+/**
+ * Recent-upload evidence for enrichment (1 quota unit per channel).
+ * Returns the latest upload date plus up to `maxResults` recent video
+ * titles. Private/deleted placeholders are skipped.
+ */
+export async function listRecentUploads(
+  ctx: PlatformAdapterContext,
+  uploadsPlaylistId: string,
+  options?: ListOptions & { maxResults?: number },
+): Promise<{ latestUploadAt: string | null; recentTitles: string[] }> {
+  const fetchFn = options?.fetchFn ?? fetch;
+  const maxResults = Math.min(Math.max(options?.maxResults ?? 5, 1), 50);
+  const url = new URL(PLAYLIST_ITEMS_URL);
+  url.searchParams.set("part", "snippet");
+  url.searchParams.set("playlistId", uploadsPlaylistId);
+  url.searchParams.set("maxResults", String(maxResults));
+  const json = await runWithRetry(
+    () => youtubeGet(url.toString(), ctx, fetchFn),
+    options,
+  );
+  const items = PlaylistItemsListResponseSchema.parse(json).items;
+  let latest: number | null = null;
+  const recentTitles: string[] = [];
+  for (const item of items) {
+    const title = item.snippet.title.trim();
+    if (title === "Private video" || title === "Deleted video") continue;
+    const time = Date.parse(item.snippet.publishedAt);
+    if (!Number.isNaN(time) && (latest === null || time > latest)) {
+      latest = time;
+    }
+    if (title.length > 0 && recentTitles.length < maxResults) {
+      recentTitles.push(title.slice(0, 120));
+    }
+  }
+  return {
+    latestUploadAt: latest === null ? null : new Date(latest).toISOString(),
+    recentTitles,
+  };
 }
 
 /**

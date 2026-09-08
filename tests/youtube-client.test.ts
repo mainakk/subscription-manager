@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   listChannels,
+  listRecentUploads,
   listSources,
   listSubscriptions,
   withRetry,
@@ -229,5 +230,61 @@ describe("sync upserts and transitions", () => {
       { external_id: "A2", status: "unsubscribed" },
     ]);
     expect(resub.toReactivate).toEqual(["A2"]);
+  });
+});
+
+describe("listRecentUploads", () => {
+  const playlistBody = {
+    items: [
+      {
+        id: "item-1",
+        snippet: {
+          title: "Newest Build",
+          publishedAt: "2026-08-10T00:00:00Z",
+          playlistId: "UUx",
+        },
+      },
+      {
+        id: "item-2",
+        snippet: {
+          title: "Private video",
+          publishedAt: "2026-08-12T00:00:00Z",
+          playlistId: "UUx",
+        },
+      },
+      {
+        id: "item-3",
+        snippet: {
+          title: "Older Build",
+          publishedAt: "2026-07-01T00:00:00Z",
+          playlistId: "UUx",
+        },
+      },
+    ],
+  };
+
+  it("returns the latest date and skips private placeholders", async () => {
+    const seen: string[] = [];
+    const fetchFn = (async (input: string | URL | Request) => {
+      const url = new URL(
+        typeof input === "string"
+          ? input
+          : input instanceof Request
+            ? input.url
+            : input.toString(),
+      );
+      seen.push(url.searchParams.get("playlistId") ?? "");
+      return jsonResponse(playlistBody);
+    }) as typeof fetch;
+    const result = await listRecentUploads(ctx, "UUx", { fetchFn, ...noRetry });
+    expect(seen).toEqual(["UUx"]);
+    expect(result.latestUploadAt).toBe("2026-08-10T00:00:00.000Z");
+    expect(result.recentTitles).toEqual(["Newest Build", "Older Build"]);
+  });
+
+  it("returns nulls for an empty playlist", async () => {
+    const fetchFn = (async () => jsonResponse({ items: [] })) as typeof fetch;
+    const result = await listRecentUploads(ctx, "UUempty", { fetchFn, ...noRetry });
+    expect(result).toEqual({ latestUploadAt: null, recentTitles: [] });
   });
 });

@@ -1,6 +1,10 @@
 import Image from "next/image";
 
 import type { SourceRow } from "@/lib/db/types";
+import type {
+  EnrichmentView,
+  RecommendationView,
+} from "@/lib/sources/filter";
 import { cn } from "@/lib/utils";
 
 export function statusLabel(status: SourceRow["status"]): string {
@@ -23,10 +27,29 @@ interface SourceCardProps {
   source: SourceRow;
   selected: boolean;
   onToggle: (id: string) => void;
+  enrichment?: EnrichmentView | null;
+  recommendation?: RecommendationView | null;
+}
+
+function verdictBadgeClass(verdict: RecommendationView["verdict"]): string {
+  switch (verdict) {
+    case "KEEP":
+      return "bg-secondary text-secondary-foreground";
+    case "REVIEW":
+      return "border border-input text-muted-foreground";
+    case "UNSUBSCRIBE":
+      return "border border-destructive/50 text-destructive";
+  }
 }
 
 /** Only active sources are selectable; others are display-only. */
-export function SourceCard({ source, selected, onToggle }: SourceCardProps) {
+export function SourceCard({
+  source,
+  selected,
+  onToggle,
+  enrichment,
+  recommendation,
+}: SourceCardProps) {
   const selectable = source.status === "active";
   const counts = [
     formatCount(source.subscriber_count, "subscriber"),
@@ -73,10 +96,45 @@ export function SourceCard({ source, selected, onToggle }: SourceCardProps) {
             {statusLabel(source.status)}
           </span>
         </div>
-        {source.provider_description ? (
-          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-            {source.provider_description}
+        {enrichment ? (
+          <p className="mt-1 text-xs font-medium text-muted-foreground">
+            {enrichment.categoryName} · {enrichment.subcategory}
           </p>
+        ) : null}
+        {enrichment?.description ?? source.provider_description ? (
+          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+            {enrichment?.description ?? source.provider_description}
+          </p>
+        ) : null}
+        {enrichment && enrichment.topics.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {enrichment.topics.slice(0, 4).map((topic) => (
+              <span
+                key={topic}
+                className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
+              >
+                {topic}
+              </span>
+            ))}
+            {enrichment.topics.length > 4 ? (
+              <span className="px-1 py-0.5 text-xs text-muted-foreground">
+                +{enrichment.topics.length - 4} more
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+        {recommendation ? (
+          <div className="mt-2 flex flex-col gap-1">
+            <span
+              className={cn(
+                "w-fit shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+                verdictBadgeClass(recommendation.verdict),
+              )}
+            >
+              AI: {recommendation.verdict}
+            </span>
+            <p className="text-xs text-muted-foreground">{recommendation.reason}</p>
+          </div>
         ) : null}
         {counts.length > 0 ? (
           <p className="mt-1 text-xs text-muted-foreground">{counts.join(" · ")}</p>

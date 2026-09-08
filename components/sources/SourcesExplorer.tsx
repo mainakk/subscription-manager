@@ -11,8 +11,10 @@ import { UnsubscribeResult } from "@/components/sources/UnsubscribeResult";
 import type { SourceRow } from "@/lib/db/types";
 import {
   DEFAULT_FILTERS,
+  EMPTY_META,
   filterSources,
   sortSources,
+  type EnrichmentMeta,
   type SourceFilters,
 } from "@/lib/sources/filter";
 import type { BulkResult } from "@/lib/sources/unsubscribe";
@@ -30,8 +32,14 @@ function requestErrorMessage(code: string): string {
   }
 }
 
-/** Search/filter/sort + multi-select + bulk unsubscribe (M2). */
-export function SourcesExplorer({ sources }: { sources: SourceRow[] }) {
+/** Search/filter/sort + multi-select + bulk unsubscribe (M2; enriched in M3). */
+export function SourcesExplorer({
+  sources,
+  meta = EMPTY_META,
+}: {
+  sources: SourceRow[];
+  meta?: EnrichmentMeta;
+}) {
   const router = useRouter();
   const [filters, setFilters] = useState<SourceFilters>(DEFAULT_FILTERS);
   const [selected, setSelected] = useState<string[]>([]);
@@ -41,8 +49,8 @@ export function SourcesExplorer({ sources }: { sources: SourceRow[] }) {
   const [result, setResult] = useState<BulkResult | null>(null);
 
   const visible = useMemo(
-    () => sortSources(filterSources(sources, filters), filters.sort),
-    [sources, filters],
+    () => sortSources(filterSources(sources, filters, meta), filters.sort, meta),
+    [sources, filters, meta],
   );
   const selectableVisible = useMemo(
     () => visible.filter((s) => s.status === "active"),
@@ -168,6 +176,8 @@ export function SourcesExplorer({ sources }: { sources: SourceRow[] }) {
               source={source}
               selected={selected.includes(source.id)}
               onToggle={toggle}
+              enrichment={meta.enrichments[source.id] ?? null}
+              recommendation={meta.recommendations[source.id] ?? null}
             />
           ))}
         </ul>

@@ -103,3 +103,31 @@ export const MyChannelResponseSchema = z
     items: z.array(z.object({ id: z.string() }).passthrough()).default([]),
   })
   .passthrough();
+
+export const PlaylistItemSchema = z
+  .object({
+    id: z.string(),
+    snippet: z
+      .object({
+        title: z.string(),
+        publishedAt: z.string(),
+        playlistId: z.string(),
+        resourceId: z
+          .object({
+            kind: z.string(),
+            videoId: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+
+export type PlaylistItem = z.infer<typeof PlaylistItemSchema>;
+
+export const PlaylistItemsListResponseSchema = z
+  .object({
+    items: z.array(PlaylistItemSchema).default([]),
+  })
+  .passthrough();

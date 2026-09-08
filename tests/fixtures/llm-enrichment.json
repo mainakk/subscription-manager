@@ -1,0 +1,58 @@
+{
+  "valid": {
+    "id": "chatcmpl-test-1",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"category\": \"Woodworking\", \"subcategory\": \"Furniture\", \"topics\": [\"joinery\", \"hardwood furniture\", \"hand tools\"], \"description\": \"Builds hardwood furniture and demonstrates traditional joinery.\", \"confidence\": 0.91, \"verdict\": \"KEEP\", \"reason\": \"Active creator with a focused furniture catalog and steady output.\"}"
+        },
+        "finish_reason": "stop"
+      }
+    ]
+  },
+  "fenced": {
+    "id": "chatcmpl-test-2",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "```json\n{\"category\": \"Cooking\", \"subcategory\": \"Sourdough\", \"topics\": [\"sourdough\", \"bread baking\", \"home cooking\"], \"description\": \"Home sourdough baking with starter guides and weekly recipes.\", \"confidence\": 0.88, \"verdict\": \"REVIEW\", \"reason\": \"Narrow sourdough focus overlaps with broader cooking sources.\"}\n```"
+        },
+        "finish_reason": "stop"
+      }
+    ]
+  },
+  "invalidCategory": {
+    "id": "chatcmpl-test-3",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"category\": \"Knitting\", \"subcategory\": \"Scarves\", \"topics\": [\"yarn\"], \"description\": \"Knitting videos.\", \"confidence\": 2, \"verdict\": \"KEEP\", \"reason\": \"Nice.\"}"
+        },
+        "finish_reason": "stop"
+      }
+    ]
+  },
+  "notJson": {
+    "id": "chatcmpl-test-4",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "This channel is great! I love woodworking videos."
+        },
+        "finish_reason": "stop"
+      }
+    ]
+  }
+}

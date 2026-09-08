@@ -83,3 +83,29 @@ sync while libraries are small).
   a note; unknown ids are reported without audit rows (FK).
 - History: `/history` lists `user_action_batches` with per-batch item
   detail. No schema changes in M2 (0001 tables as designed).
+
+## M3 scope (AI enrichment + recommendations + cleanup summary)
+
+- LLM access is OpenAI-compatible chat completions (`lib/ai/enrich.ts`),
+  configured by `OPENAI_API_KEY` (+ optional `OPENAI_BASE_URL`,
+  `ENRICHMENT_MODEL`); no key means `ai_not_configured`, never a mock
+  presented as real. One call per source, `temperature 0.2`,
+  `response_format json_object`, flat 7-key payload validated by Zod with
+  exactly one repair retry; persistent failure leaves the source
+  unenriched (absence of a row) and is reported per item.
+- The prompt forbids inventing watch history: verdicts may only cite
+  upload recency, output volume, audience scale, description
+  specificity, and library fit. Single-pass design — code-computed topic
+  overlap is stored in recommendation `signals` after the fact, never
+  claimed by the verdict.
+- Upload evidence comes from `playlistItems.list` (1 quota unit/channel,
+  latest date + up to 5 titles) and refreshes `sources.last_upload_at`;
+  sources without an uploads playlist id skip the lookup.
+- `POST /api/sources/enrich` processes chunks (default 10, max 25) with
+  concurrency 3; the dashboard loops until `remaining` is 0, so long
+  libraries never hit serverless timeouts. `force: true` re-runs
+  already-enriched rows (prompt iteration). No schema changes in M3.
+- Dashboard: AI Cleanup panel (analyzed/verdict/stale counts + Analyze
+  button with progress), category + recommendation filters and sorts,
+  enriched cards (category line, AI description, topic chips, verdict +
+  reason). Search also covers subcategory, topics, and category slugs.
