@@ -18,13 +18,14 @@ import { z } from "zod";
 
 import { CATEGORIES, type Category } from "@/lib/categories";
 import {
+  MAX_AI_TEXT_LENGTH,
   RecommendationSchema,
   EnrichmentSchema,
   type Recommendation,
   type Enrichment,
 } from "@/lib/validation";
 
-export const ENRICHMENT_PROMPT_VERSION = "v1";
+export const ENRICHMENT_PROMPT_VERSION = "v3";
 const LLM_TIMEOUT_MS = 60_000;
 const MAX_TOKENS = 600;
 
@@ -99,10 +100,12 @@ Rules:
 - category MUST be exactly one of: ${CATEGORIES.join(" | ")}. Never invent another top-level category.
 - subcategory is a short free-form label (e.g. "Furniture", "Sourdough").
 - topics: 3-8 short lowercase topic phrases.
-- description: one or two sentences (max 280 chars) describing WHAT the channel publishes. \
+- description: one or two sentences describing WHAT the channel publishes \
+(hard limit ${MAX_AI_TEXT_LENGTH} characters — longer replies are rejected). \
 Content-focused, no marketing language, no second person, no praise.
 - confidence: 0-1 self-assessed categorization confidence.
-- verdict is KEEP, REVIEW, or UNSUBSCRIBE with reason (max 280 chars) citing concrete evidence.
+- verdict is KEEP, REVIEW, or UNSUBSCRIBE with reason (hard limit \
+${MAX_AI_TEXT_LENGTH} characters — longer replies are rejected) citing concrete evidence.
 - You do NOT know the user's watch history. NEVER claim the user has or hasn't watched anything, \
 and never invent viewing frequency. Judge only by: upload recency, output volume, audience scale, \
 description specificity, and fit within the user's library.

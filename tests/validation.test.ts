@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MAX_AI_TEXT_LENGTH,
   parseEnrichment,
   parseRecommendation,
 } from "@/lib/validation";
@@ -39,6 +40,17 @@ describe("AI enrichment validation", () => {
     expect(() => parseEnrichment("just a string")).toThrow();
     expect(() => parseEnrichment({})).toThrow();
   });
+
+  it("allows free text up to the shared limit and rejects beyond it", () => {
+    const ok = "x".repeat(MAX_AI_TEXT_LENGTH);
+    const tooLong = "x".repeat(MAX_AI_TEXT_LENGTH + 1);
+    expect(() =>
+      parseEnrichment({ ...validEnrichment, description: ok }),
+    ).not.toThrow();
+    expect(() =>
+      parseEnrichment({ ...validEnrichment, description: tooLong }),
+    ).toThrow();
+  });
 });
 
 describe("AI recommendation validation", () => {
@@ -54,6 +66,17 @@ describe("AI recommendation validation", () => {
     ).toThrow();
     expect(() =>
       parseRecommendation({ verdict: "DELETE", reason: "x" }),
+    ).toThrow();
+  });
+
+  it("allows reasons up to the shared limit and rejects beyond it", () => {
+    const ok = "x".repeat(MAX_AI_TEXT_LENGTH);
+    const tooLong = "x".repeat(MAX_AI_TEXT_LENGTH + 1);
+    expect(() =>
+      parseRecommendation({ verdict: "KEEP", reason: ok }),
+    ).not.toThrow();
+    expect(() =>
+      parseRecommendation({ verdict: "KEEP", reason: tooLong }),
     ).toThrow();
   });
 });

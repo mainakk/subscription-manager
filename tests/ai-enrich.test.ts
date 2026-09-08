@@ -179,12 +179,13 @@ describe("AI config", () => {
 });
 
 describe("category slugs", () => {
-  it("maps all 24 controlled names to distinct DB slugs", () => {
+  it("maps all 25 controlled names to distinct DB slugs", () => {
     const slugs = CATEGORIES.map(categorySlug);
-    expect(new Set(slugs).size).toBe(24);
+    expect(new Set(slugs).size).toBe(25);
     expect(slugs.every((s) => /^[a-z0-9-]+$/.test(s))).toBe(true);
     expect(categorySlug("DIY & Home Improvement")).toBe("diy-home-improvement");
     expect(categorySlug("Art & Design")).toBe("art-design");
+    expect(categorySlug("Engineering")).toBe("engineering");
     expect(categorySlug("Other")).toBe("other");
   });
 });

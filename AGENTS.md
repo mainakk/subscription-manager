@@ -279,6 +279,7 @@ Initial categories:
 * News
 * Science
 * Education
+* Engineering
 * Fitness
 * Cycling
 * Travel

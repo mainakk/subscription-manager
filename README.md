@@ -142,7 +142,7 @@ AI is an enrichment and advisory layer — never the source of truth. External A
 
 - The model returns a single flat JSON object per source; anything else is discarded.
 - Every response is validated with Zod (`lib/validation.ts`); persistent validation failure leaves the source unenriched rather than persisting raw model text.
-- Top-level categories come from a controlled 24-item vocabulary the model cannot extend; subcategories and topics are free-form.
+- Top-level categories come from a controlled 25-item vocabulary the model cannot extend; subcategories and topics are free-form.
 - Recommendations are advisory `KEEP` / `REVIEW` / `UNSUBSCRIBE` verdicts with evidence-based reasons. The model has no access to watch history and is instructed never to invent viewing behavior.
 - The provider is any OpenAI-compatible chat-completions endpoint (`OPENAI_BASE_URL`); model and prompt version are recorded on every row.
 

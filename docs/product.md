@@ -232,20 +232,21 @@ Initial top-level taxonomy:
 8. News
 9. Science
 10. Education
-11. Fitness
-12. Cycling
-13. Travel
-14. Automotive
-15. Gaming
-16. Music
-17. Art & Design
-18. Photography
-19. Fashion
-20. Lifestyle
-21. Comedy
-22. Entertainment
-23. Sports
-24. Other
+11. Engineering
+12. Fitness
+13. Cycling
+14. Travel
+15. Automotive
+16. Gaming
+17. Music
+18. Art & Design
+19. Photography
+20. Fashion
+21. Lifestyle
+22. Comedy
+23. Entertainment
+24. Sports
+25. Other
 
 The taxonomy should be stored/configured centrally.
 

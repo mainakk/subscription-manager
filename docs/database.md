@@ -1,11 +1,11 @@
 # Database (M0)
 
-Migration: `supabase/migrations/0001_init.sql`. All changes via migrations;
+Migration: `supabase/migrations/0001_init.sql` + `0002_add_engineering_category.sql`. All changes via migrations;
 no ad-hoc production mutations.
 
 ## Tables
 
-- `categories(slug pk, name unique, sort_order)` — 24-row controlled
+- `categories(slug pk, name unique, sort_order)` — 25-row controlled
   vocabulary, publicly readable. Mirrors `lib/categories.ts`.
 - `platform_connections` — one row per (user, platform). Holds
   `encrypted_refresh_token` (opaque ciphertext/vault ref, M1 decides
@@ -16,10 +16,10 @@ no ad-hoc production mutations.
   for `subscriptions.delete`. Unique `(user_id, platform, external_id)`.
   `status`: active | unsubscribed | unavailable_externally.
 - `source_enrichments` — one row per source: controlled `category_slug`,
-  free-form `subcategory`, `topics[3..8]`, `description<=280`,
+  free-form `subcategory`, `topics[3..8]`, `description<=560`,
   `confidence 0..1`, `model`, `prompt_version`.
 - `source_recommendations` — `verdict` KEEP | REVIEW | UNSUBSCRIBE,
-  `reason<=280`, `signals` jsonb (computed evidence, M3).
+  `reason<=560`, `signals` jsonb (computed evidence, M3).
 - `user_action_batches` + `user_actions` — bulk-unsubscribe audit.
   Per-item `success`, `external_status`, `error_code`, `snapshot`.
 

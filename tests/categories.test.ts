@@ -7,9 +7,10 @@ import {
 } from "@/lib/categories";
 
 describe("controlled category vocabulary", () => {
-  it("contains exactly the 24 MVP categories", () => {
-    expect(CATEGORIES).toHaveLength(24);
+  it("contains exactly the 25 MVP categories", () => {
+    expect(CATEGORIES).toHaveLength(25);
     expect(CATEGORIES).toContain("Woodworking");
+    expect(CATEGORIES).toContain("Engineering");
     expect(CATEGORIES).toContain("Other");
   });
 

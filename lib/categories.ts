@@ -16,6 +16,7 @@ export const CATEGORIES = [
   "News",
   "Science",
   "Education",
+  "Engineering",
   "Fitness",
   "Cycling",
   "Travel",
@@ -43,7 +44,7 @@ export function isValidCategory(value: string): value is Category {
 /**
  * DB slug for a controlled category name. Must stay in sync with the
  * `categories` seed table in supabase/migrations/0001_init.sql
- * (covered by tests over all 24 names).
+ * (covered by tests over all 25 names).
  */
 const CATEGORY_SLUGS: Record<Category, string> = {
   Cooking: "cooking",
@@ -56,6 +57,7 @@ const CATEGORY_SLUGS: Record<Category, string> = {
   News: "news",
   Science: "science",
   Education: "education",
+  Engineering: "engineering",
   Fitness: "fitness",
   Cycling: "cycling",
   Travel: "travel",
