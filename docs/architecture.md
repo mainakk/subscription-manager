@@ -91,7 +91,9 @@ sync while libraries are small).
   `ENRICHMENT_MODEL`); no key means `ai_not_configured`, never a mock
   presented as real. One call per source, `temperature 0.2`,
   `response_format json_object`, flat 7-key payload validated by Zod with
-  exactly one repair retry; persistent failure leaves the source
+  exactly one repair retry; parsing tolerates prose/fences by extracting
+  the first balanced object, and `ENRICH_DEBUG=1` logs validation
+  diagnostics server-side. Persistent failure leaves the source
   unenriched (absence of a row) and is reported per item.
 - The prompt forbids inventing watch history: verdicts may only cite
   upload recency, output volume, audience scale, description

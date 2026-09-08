@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildEnrichmentMessages,
   enrichWithLlm,
+  extractJsonObject,
   getAiConfig,
   type EnrichInput,
 } from "@/lib/ai/enrich";
@@ -115,6 +116,52 @@ describe("enrichWithLlm", () => {
     await expect(
       enrichWithLlm(baseInput, config, chatFetch({ error: "bad key" }, 401)),
     ).rejects.toMatchObject({ code: "llm_unauthorized", retryable: false });
+  });
+
+  it("accepts prose-wrapped JSON via balanced-object extraction", async () => {
+    const payload = `{"category": "Woodworking", "subcategory": "Furniture", "topics": ["joinery", "hand tools", "shop projects"], "description": "Builds hardwood furniture and demonstrates traditional joinery.", "confidence": 0.9, "verdict": "KEEP", "reason": "Active creator with a focused catalog."}`;
+    const body = {
+      choices: [
+        {
+          message: {
+            content: `Sure! Here is my analysis:\n\`\`\`json\n${payload}\n\`\`\`\nHope that helps!`,
+          },
+        },
+      ],
+    };
+    const out = await enrichWithLlm(baseInput, config, chatFetch(body));
+    expect(out.enrichment).toMatchObject({
+      category: "Woodworking",
+      subcategory: "Furniture",
+    });
+    expect(out.recommendation).toMatchObject({ verdict: "KEEP" });
+  });
+});
+
+describe("extractJsonObject", () => {
+  it("returns pure JSON unchanged", () => {
+    expect(extractJsonObject('{"a": 1}')).toBe('{"a": 1}');
+  });
+
+  it("finds the object inside prose and fences", () => {
+    expect(
+      extractJsonObject('Here you go:\n```json\n{"a": 1}\n```\nBye!'),
+    ).toBe('{"a": 1}');
+  });
+
+  it("takes the first balanced object when several are present", () => {
+    expect(extractJsonObject('{"a": 1} and {"b": 2}')).toBe('{"a": 1}');
+  });
+
+  it("ignores braces inside strings and handles escapes", () => {
+    expect(extractJsonObject('Note {"text": "a {b} \\"quoted\\" c"} end')).toBe(
+      '{"text": "a {b} \\"quoted\\" c"}',
+    );
+  });
+
+  it("returns null for missing or unbalanced braces", () => {
+    expect(extractJsonObject("no braces here")).toBeNull();
+    expect(extractJsonObject('{"a": 1')).toBeNull();
   });
 });
 

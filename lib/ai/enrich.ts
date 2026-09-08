@@ -160,6 +160,49 @@ function stripCodeFences(text: string): string {
   return match ? match[1].trim() : trimmed;
 }
 
+/**
+ * Extracts the first balanced `{…}` object from free-form model output.
+ * Small models wrap JSON in prose and fences, which whole-string parsing
+ * rejects outright. String-aware so braces inside quoted values don't
+ * disturb depth tracking. Returns null when unbalanced (e.g. output cut
+ * off by `max_tokens`). Exported for unit tests.
+ */
+export function extractJsonObject(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+/**
+ * Opt-in diagnostics (`ENRICH_DEBUG=1`): logs why model output failed
+ * validation to the server console. Never logs keys; raw snippets are
+ * truncated. Off by default.
+ */
+function debugLog(...args: unknown[]): void {
+  const flag = process.env.ENRICH_DEBUG;
+  if (flag === "1" || flag?.toLowerCase() === "true") {
+    console.warn("[enrich-debug]", ...args);
+  }
+}
+
 const ChatResponseSchema = z.object({
   choices: z
     .array(z.object({ message: z.object({ content: z.string().nullable() }) }))
@@ -210,17 +253,20 @@ async function completeOnce(
   }
   let payload: unknown;
   try {
-    payload = JSON.parse(stripCodeFences(content)) as unknown;
+    const candidate = extractJsonObject(stripCodeFences(content));
+    payload = JSON.parse(candidate ?? content) as unknown;
   } catch {
+    debugLog("unparseable model output:", content.slice(0, 500));
     throw new EnrichmentError("llm_invalid_output", true);
   }
   const validated = CombinedSchema.safeParse(payload);
   if (!validated.success) {
+    const issues = validated.error.issues
+      .map((i) => `${i.path.join(".")}: ${i.message}`)
+      .join("; ");
+    debugLog("schema validation failed:", issues);
     const err = new EnrichmentError("llm_invalid_output", true);
-    (err as { validationIssues?: string }).validationIssues =
-      validated.error.issues
-        .map((i) => `${i.path.join(".")}: ${i.message}`)
-        .join("; ");
+    (err as { validationIssues?: string }).validationIssues = issues;
     throw err;
   }
   const { verdict, reason, ...enrichment } = validated.data;
