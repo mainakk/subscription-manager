@@ -103,7 +103,11 @@ sync while libraries are small).
   sources without an uploads playlist id skip the lookup.
 - `POST /api/sources/enrich` processes chunks (default 10, max 25) with
   concurrency 3; the dashboard loops until `remaining` is 0, so long
-  libraries never hit serverless timeouts. `force: true` re-runs
+  libraries never hit serverless timeouts — with a circuit breaker
+  (`shouldContinueEnrichment`) that halts on any chunk with zero
+  successes and surfaces that chunk's failures with a retry button
+  (failed items record nothing, so without it the same chunk would
+  repeat forever). `force: true` re-runs
   already-enriched rows (prompt iteration). No schema changes in M3.
 - Dashboard: AI Cleanup panel (analyzed/verdict/stale counts + Analyze
   button with progress), category + recommendation filters and sorts,

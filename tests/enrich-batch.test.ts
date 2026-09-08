@@ -4,6 +4,7 @@ import type { EnrichInput, EnrichOutput } from "@/lib/ai/enrich";
 import {
   computeTopicOverlap,
   runEnrichmentBatch,
+  shouldContinueEnrichment,
   type EnrichDeps,
   type EnrichTarget,
 } from "@/lib/sources/enrich";
@@ -187,5 +188,32 @@ describe("runEnrichmentBatch", () => {
     expect(result.saves[0].save.signals).toMatchObject({
       lastUploadAt: "2026-01-01T00:00:00.000Z",
     });
+  });
+});
+
+describe("shouldContinueEnrichment (loop circuit breaker)", () => {
+  it("stops when nothing remains", () => {
+    expect(
+      shouldContinueEnrichment({ succeeded: 10, failed: 0, remaining: 0 }),
+    ).toBe(false);
+  });
+
+  it("halts on a chunk with zero successes even when work remains", () => {
+    // Failed items record nothing, so the same chunk would repeat forever.
+    expect(
+      shouldContinueEnrichment({ succeeded: 0, failed: 10, remaining: 90 }),
+    ).toBe(false);
+  });
+
+  it("continues while chunks make progress", () => {
+    expect(
+      shouldContinueEnrichment({ succeeded: 7, failed: 3, remaining: 90 }),
+    ).toBe(true);
+  });
+
+  it("stops on an empty run", () => {
+    expect(
+      shouldContinueEnrichment({ succeeded: 0, failed: 0, remaining: 0 }),
+    ).toBe(false);
   });
 });

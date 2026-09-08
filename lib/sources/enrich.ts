@@ -270,3 +270,21 @@ export async function runEnrichmentBatch(
     saves: saves.filter((s) => savedIds.has(s.sourceId)),
   };
 }
+
+export interface EnrichChunkOutcome {
+  succeeded: number;
+  failed: number;
+  remaining: number;
+}
+
+/**
+ * Dashboard loop policy (circuit breaker). The client requests chunk
+ * after chunk; it must stop when done AND when a chunk makes no
+ * progress — failed items record nothing, so without this check the
+ * same failing chunk repeats forever.
+ */
+export function shouldContinueEnrichment(outcome: EnrichChunkOutcome): boolean {
+  if (outcome.remaining === 0) return false;
+  if (outcome.succeeded === 0) return false;
+  return true;
+}

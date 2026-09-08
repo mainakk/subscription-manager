@@ -4,6 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import {
+  shouldContinueEnrichment,
+  type EnrichFailure,
+} from "@/lib/sources/enrich";
 import type { CleanupSummary } from "@/lib/sources/summary";
 
 function enrichErrorMessage(code: string): string {
@@ -25,13 +29,16 @@ interface EnrichResponse {
   succeeded: number;
   failed: number;
   remaining: number;
+  failures: EnrichFailure[];
   error?: string;
 }
 
 /**
  * AI Cleanup summary + chunked enrichment runner (M3).
  * Processes 10 sources per request so long libraries never hit serverless
- * timeouts; loops client-side until `remaining` reaches 0.
+ * timeouts; loops client-side until `remaining` reaches 0, with a circuit
+ * breaker that halts on any chunk with zero successes (failed items
+ * record nothing, so the same chunk would otherwise repeat forever).
  */
 export function EnrichPanel({
   summary,
@@ -44,10 +51,14 @@ export function EnrichPanel({
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [halted, setHalted] = useState(false);
+  const [runFailures, setRunFailures] = useState<EnrichFailure[]>([]);
 
   async function runAll() {
     setRunning(true);
     setError(null);
+    setHalted(false);
+    setRunFailures([]);
     let done = 0;
     try {
       for (;;) {
@@ -66,7 +77,14 @@ export function EnrichPanel({
         const out = (await res.json()) as EnrichResponse;
         done += out.succeeded;
         setProgress({ done, total: Math.max(summary.unenriched, done) });
-        if (out.remaining === 0) break;
+        setRunFailures((prev) => {
+          const seen = new Set(prev.map((f) => f.sourceId));
+          return [...prev, ...out.failures.filter((f) => !seen.has(f.sourceId))];
+        });
+        if (!shouldContinueEnrichment(out)) {
+          if (out.remaining > 0) setHalted(true);
+          break;
+        }
       }
       router.refresh();
     } catch {
@@ -115,6 +133,35 @@ export function EnrichPanel({
           </Button>
         ) : null}
       </div>
+      {!running && (halted || runFailures.length > 0) ? (
+        <div className="mt-3 rounded-md border border-border p-3">
+          {halted ? (
+            <p className="text-sm font-medium" role="alert">
+              Stopped — a full chunk made no progress, so the run was halted
+              instead of repeating it. Nothing was recorded for these sources.
+            </p>
+          ) : (
+            <p className="text-sm font-medium">
+              Last run finished with {runFailures.length}{" "}
+              {runFailures.length === 1 ? "failure" : "failures"}.
+            </p>
+          )}
+          <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+            {runFailures.slice(0, 10).map((f) => (
+              <li key={f.sourceId}>
+                {f.name} — <span className="font-mono text-xs">{f.errorCode}</span>
+                {f.retryable ? " (retryable)" : ""}
+              </li>
+            ))}
+            {runFailures.length > 10 ? (
+              <li>…and {runFailures.length - 10} more.</li>
+            ) : null}
+          </ul>
+          <Button type="button" variant="outline" onClick={runAll} className="mt-3">
+            Retry remaining
+          </Button>
+        </div>
+      ) : null}
       {!aiConfigured && summary.total > 0 ? (
         <p className="mt-2 text-sm text-muted-foreground">
           AI analysis needs an OpenAI-compatible key on the server
