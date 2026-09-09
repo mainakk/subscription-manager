@@ -1,16 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-export default function LoginPage() {
+function safeNextParam(value: string | null): string {
+  return value && value.startsWith("/") && !value.startsWith("//")
+    ? value
+    : "/dashboard";
+}
+
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const configured = isSupabaseConfigured();
+  const next = safeNextParam(useSearchParams().get("next"));
+  // Keep the default redirect exactly allowlist-shaped (no query string);
+  // only non-default destinations get ?next=.
+  const callbackUrl =
+    next === "/dashboard"
+      ? `${window.location.origin}/auth/callback`
+      : `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
   async function signInWithEmail(event: React.FormEvent) {
     event.preventDefault();
@@ -21,7 +35,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: callbackUrl,
         },
       });
       setStatus(
@@ -41,7 +55,9 @@ export default function LoginPage() {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          redirectTo: callbackUrl,
+        },
       });
       if (error) setStatus(`Google sign-in failed: ${error.message}`);
     } catch (err) {
@@ -56,7 +72,7 @@ export default function LoginPage() {
       <main className="w-full max-w-sm">
         <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          M0 auth shell. YouTube connection arrives in M1.
+          Sign in to manage your subscriptions.
         </p>
         {!configured ? (
           <p className="mt-6 rounded-md border border-input bg-muted p-3 text-sm text-muted-foreground">
@@ -100,5 +116,13 @@ export default function LoginPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
