@@ -3,7 +3,7 @@
  * The UI and domain logic depend on this interface, never on YouTube specifics.
  */
 
-export type Platform = "youtube";
+export type Platform = "youtube" | "facebook";
 
 export interface PlatformCapabilities {
   /** Can list the user's sources on this platform. */

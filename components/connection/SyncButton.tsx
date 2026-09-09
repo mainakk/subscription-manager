@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { requestErrorMessage } from "@/lib/error-messages";
 
-export function SyncButton({ label = "Sync now" }: { label?: string }) {
+export function SyncButton({ label = "Sync now", platform = "youtube" }: { label?: string; platform?: "youtube" | "facebook" }) {
   const router = useRouter();
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +15,7 @@ export function SyncButton({ label = "Sync now" }: { label?: string }) {
     setSyncing(true);
     setError(null);
     try {
-      const res = await fetch("/api/youtube/sync", { method: "POST" });
+      const res = await fetch(`/api/${platform}/sync`, { method: "POST" });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as {
           error?: string;

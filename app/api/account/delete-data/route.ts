@@ -7,6 +7,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthenticatedUser } from "@/lib/supabase/server";
 import { revokeToken } from "@/lib/youtube/oauth";
+import { revokeFacebookToken } from "@/lib/facebook/oauth";
 import { decryptRefreshToken } from "@/lib/youtube/token-crypto";
 
 /**
@@ -38,17 +39,17 @@ export async function POST() {
 
   const { data: connectionData } = await admin
     .from("platform_connections")
-    .select("encrypted_refresh_token")
+    .select("platform,encrypted_refresh_token")
     .eq("user_id", userId)
-    .eq("platform", "youtube")
-    .limit(1);
-  const stored = (connectionData?.[0] as { encrypted_refresh_token: string | null } | undefined)
-    ?.encrypted_refresh_token;
+  const storedConnections = (connectionData ?? []) as { platform: string; encrypted_refresh_token: string | null }[];
 
   let revoked = false;
-  if (stored) {
+  for (const connection of storedConnections) {
+    if (!connection.encrypted_refresh_token) continue;
     try {
-      await revokeToken(decryptRefreshToken(stored));
+      const token = decryptRefreshToken(connection.encrypted_refresh_token);
+      if (connection.platform === "facebook") await revokeFacebookToken(token);
+      else if (connection.platform === "youtube") await revokeToken(token);
       revoked = true;
     } catch {
       // Advisory only; local deletion below is what matters.

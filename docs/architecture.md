@@ -135,3 +135,13 @@ sync while libraries are small).
   `?sync=<code>` banner (AutoSync passes the code through), and the
   humanized connection `last_error` line.
 - Deploy: runbook in `docs/deploy.md`; no `vercel.json` (Next.js preset).
+
+## Facebook capability-gated slice
+
+Facebook uses a separate server-side OAuth flow and stores an encrypted
+long-lived user token. Sync calls Graph API `/me/accounts` to discover Pages
+the user manages, then normalizes them into the shared `Source` model.
+Current Meta APIs do not provide a supported import of followed Pages,
+Groups, or arbitrary public profiles; those capabilities are explicitly
+deferred. Facebook source removal is local-only and never claims to unfollow
+or delete a Page.

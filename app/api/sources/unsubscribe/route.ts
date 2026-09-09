@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAdapter } from "@/lib/platforms/registry";
 import "@/lib/platforms/youtube";
+import "@/lib/platforms/facebook";
 import { YouTubeApiError } from "@/lib/platforms/youtube/client";
 import {
   UnsubscribeRequestSchema,
@@ -49,6 +50,60 @@ export async function POST(request: Request) {
     admin = createAdminClient();
   } catch {
     return NextResponse.json({ error: "misconfigured" }, { status: 500 });
+  }
+
+  const { data: requestedRows } = await admin
+    .from("sources")
+    .select("id,platform")
+    .eq("user_id", userId)
+    .in("id", parsed.data.sourceIds);
+  const isFacebookOnly = (requestedRows ?? []).length > 0 &&
+    (requestedRows ?? []).every((row) => row.platform === "facebook");
+  if (new Set((requestedRows ?? []).map((row) => row.platform)).size > 1) {
+    return NextResponse.json({ error: "mixed_platforms" }, { status: 400 });
+  }
+  if (isFacebookOnly) {
+    let batchId = "";
+    const deps: UnsubscribeDeps = {
+      loadOwnedSources: async (ids) => {
+        const { data, error } = await admin.from("sources")
+          .select("id,name,platform,external_id,subscription_external_id,status")
+          .eq("user_id", userId).eq("platform", "facebook").in("id", ids);
+        if (error) throw new Error("db_load_failed");
+        return ((data ?? []) as OwnedSource[]).map((row) => ({ ...row, local_only: true }));
+      },
+      createBatch: async (totalCount) => {
+        const { data, error } = await admin.from("user_action_batches").insert({
+          user_id: userId, platform: "facebook", type: "bulk_unsubscribe",
+          total_count: totalCount, success_count: 0, failure_count: 0, status: "pending",
+        }).select("id").single();
+        if (error || !data) throw new Error("db_batch_failed");
+        batchId = (data as { id: string }).id;
+        return batchId;
+      },
+      deleteExternal: async () => ({ alreadyGone: false }),
+      markUnsubscribed: async (sourceId, at) => {
+        const { error } = await admin.from("sources").update({ status: "unsubscribed", unsubscribed_at: at })
+          .eq("id", sourceId).eq("user_id", userId);
+        if (error) throw new Error("db_update_failed");
+      },
+      recordAction: async (action) => {
+        const { error } = await admin.from("user_actions").insert({
+          batch_id: batchId, source_id: action.sourceId, user_id: userId,
+          action_type: action.actionType, success: action.success,
+          external_status: action.externalStatus, error_code: action.errorCode,
+          error_message: action.errorMessage, snapshot: action.snapshot,
+        });
+        if (error) throw new Error("db_audit_failed");
+      },
+      finalizeBatch: async (id, patch) => {
+        const { error } = await admin.from("user_action_batches").update(patch)
+          .eq("id", id).eq("user_id", userId);
+        if (error) throw new Error("db_finalize_failed");
+      },
+    };
+    try { return NextResponse.json(await executeBulkUnsubscribe(parsed.data.sourceIds, deps)); }
+    catch { return NextResponse.json({ error: "unsubscribe_failed" }, { status: 500 }); }
   }
 
   // Connection must be usable before any batch is created.

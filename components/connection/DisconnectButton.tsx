@@ -5,19 +5,20 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
-export function DisconnectButton() {
+export function DisconnectButton({ platform = "youtube" }: { platform?: "youtube" | "facebook" }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function onDisconnect() {
-    if (!window.confirm("Disconnect YouTube? Your imported list stays, but syncing stops.")) {
+    const name = platform === "facebook" ? "Facebook" : "YouTube";
+    if (!window.confirm(`Disconnect ${name}? Your imported list stays, but syncing stops.`)) {
       return;
     }
     setPending(true);
     setError(null);
     try {
-      const res = await fetch("/api/youtube/disconnect", { method: "POST" });
+      const res = await fetch(`/api/${platform}/disconnect`, { method: "POST" });
       if (!res.ok) {
         setError("Disconnect failed. Try again.");
       } else {

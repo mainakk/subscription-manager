@@ -9,14 +9,17 @@ All changes via migrations; no ad-hoc production mutations.
 
 - `categories(slug pk, name unique, sort_order)` — 25-row controlled
   vocabulary, publicly readable. Mirrors `lib/categories.ts`.
-- `platform_connections` — one row per (user, platform). Holds
+- `platform_connections` — one row per (user, platform), including Facebook. Holds
   `encrypted_refresh_token` (opaque ciphertext/vault ref, M1 decides
   Vault vs app-level AES-GCM), `status`, `scopes`, `last_sync_at`,
   `last_error`. Unique `(user_id, platform)`.
-- `sources` — normalized `Source`. `external_id` = channelId,
+- `sources` — normalized `Source`. `external_id` = platform-native id
+  (YouTube channelId or managed Facebook Page id),
   `subscription_external_id` = YouTube subscription resource id required
   for `subscriptions.delete`. Unique `(user_id, platform, external_id)`.
   `status`: active | unsubscribed | unavailable_externally.
+  Facebook rows are managed Pages discovered through `/me/accounts`; Groups,
+  followed Pages, and arbitrary public profiles are not represented.
 - `source_enrichments` — one row per source: controlled `category_slug`,
   free-form `subcategory`, `topics[3..8]`, `description<=560`,
   `confidence 0..1`, `model`, `prompt_version`.

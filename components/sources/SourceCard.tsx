@@ -14,7 +14,7 @@ export function statusLabel(status: SourceRow["status"]): string {
     case "unsubscribed":
       return "Unsubscribed";
     case "unavailable_externally":
-      return "Unavailable on YouTube";
+    return "Unavailable externally";
   }
 }
 
@@ -145,7 +145,7 @@ export function SourceCard({
           rel="noopener noreferrer"
           className="mt-2 inline-block text-xs font-medium text-primary underline-offset-4 hover:underline"
         >
-          Open on YouTube
+          Open on {source.platform === "facebook" ? "Facebook" : "YouTube"}
         </a>
       </div>
     </li>

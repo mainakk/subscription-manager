@@ -33,6 +33,7 @@ export interface OwnedSource {
   external_id: string;
   subscription_external_id: string | null;
   status: string;
+  local_only?: boolean;
 }
 
 export interface ExternalDeleteResult {
@@ -122,6 +123,27 @@ export async function executeBulkUnsubscribe(
   const now = new Date().toISOString();
 
   for (const source of targets) {
+    if (source.local_only) {
+      try {
+        await deps.markUnsubscribed(source.id, now);
+        await deps.recordAction({
+          sourceId: source.id, actionType: "unsubscribe", success: true,
+          externalStatus: null, errorCode: "local_only",
+          errorMessage: "Removed from this app only; Facebook does not provide supported Page unfollow access.",
+          snapshot: { name: source.name, external_id: source.external_id, local_only: true },
+        });
+        successes.push({ sourceId: source.id, alreadyGone: false });
+      } catch {
+        await deps.recordAction({
+          sourceId: source.id, actionType: "unsubscribe", success: false,
+          externalStatus: null, errorCode: "local_update_failed",
+          errorMessage: "The source could not be removed locally.",
+          snapshot: { name: source.name, external_id: source.external_id, local_only: true },
+        });
+        failures.push(failure(source.id, source.name, "local_update_failed", true));
+      }
+      continue;
+    }
     if (!source.subscription_external_id) {
       const record: ActionRecord = {
         sourceId: source.id,

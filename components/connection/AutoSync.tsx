@@ -11,14 +11,14 @@ import { KNOWN_SYNC_ERROR_CODES } from "@/lib/error-messages";
  * Failures redirect to ?sync=<code> (allowlisted) so the dashboard can
  * explain that specific failure; a refresh cannot loop.
  */
-export function AutoSync() {
+export function AutoSync({ platform = "youtube" }: { platform?: "youtube" | "facebook" }) {
   const router = useRouter();
   const started = useRef(false);
 
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    fetch("/api/youtube/sync", { method: "POST" })
+    fetch(`/api/${platform}/sync`, { method: "POST" })
       .then(async (res) => {
         if (res.ok) {
           router.replace("/dashboard");
@@ -36,7 +36,7 @@ export function AutoSync() {
       .catch(() => {
         router.replace("/dashboard?sync=error");
       });
-  }, [router]);
+  }, [platform, router]);
 
   return <p className="text-sm text-muted-foreground">Importing your subscriptions…</p>;
 }

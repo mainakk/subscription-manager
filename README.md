@@ -37,6 +37,7 @@ Sign in → connect YouTube → sync subscriptions → run AI analysis → brows
 - Tailwind CSS v4, shadcn/ui
 - Supabase (Postgres, Auth, Row Level Security)
 - YouTube Data API v3, Google OAuth 2.0
+- Meta Graph API, Facebook OAuth (managed Page discovery only)
 - OpenAI-compatible chat-completions API for enrichment (endpoint and model are configurable)
 - Vitest for unit tests
 
@@ -106,16 +107,24 @@ Open [http://localhost:3000](http://localhost:3000), sign in, connect YouTube fr
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key (browser-safe) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service-role key — server only, never exposed to the browser |
-| `NEXT_PUBLIC_SITE_URL` | For YouTube | App base URL; used to build the OAuth callback URL |
+| `NEXT_PUBLIC_SITE_URL` | For YouTube/Facebook | App base URL; used to build OAuth callback URLs |
 | `GOOGLE_CLIENT_ID` | For YouTube | Google OAuth client ID for the YouTube connection |
 | `GOOGLE_CLIENT_SECRET` | For YouTube | Google OAuth client secret — server only |
 | `YOUTUBE_TOKEN_ENCRYPTION_KEY` | For YouTube | 32 random bytes, base64-encoded; encrypts stored refresh tokens (AES-256-GCM) |
+| `FACEBOOK_APP_ID` | For Facebook | Meta app ID |
+| `FACEBOOK_APP_SECRET` | For Facebook | Meta app secret — server only |
+| `FACEBOOK_GRAPH_API_VERSION` | No | Graph API version (defaults to the integration's current version) |
 | `OPENAI_API_KEY` | For AI analysis | API key for the OpenAI-compatible enrichment endpoint |
 | `OPENAI_BASE_URL` | No | Endpoint base URL (default `https://api.openai.com/v1`); point at any compatible endpoint |
 | `ENRICHMENT_MODEL` | No | Model name sent to the endpoint (default `gpt-4o-mini`); recorded per row for traceability |
 | `ENRICH_DEBUG` | No | Set to `1` to log model-output validation diagnostics (server console only) |
 
 Never commit `.env.local` or any real credentials. When checking configuration, refer to variable names only — never print values.
+
+Facebook imports only Pages the signed-in user manages via `/me/accounts`.
+Groups, followed Pages, and arbitrary public profiles are intentionally
+deferred because current Meta APIs do not provide a supported capability for
+this product. Removing a Facebook source is local-only.
 
 ## Project Structure
 

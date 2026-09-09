@@ -23,12 +23,19 @@ no background jobs — sync and enrichment run as chunked route handlers
      (e.g. `https://your-app.vercel.app`) — used to build the OAuth
      callback URL, so it must match exactly, no trailing slash
    - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (server only)
+   - `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET` (server only)
+   - optional `FACEBOOK_GRAPH_API_VERSION` (defaults to the version used by
+     the integration)
    - `YOUTUBE_TOKEN_ENCRYPTION_KEY` (generate once, reuse across
      deploys — rotating it orphans stored refresh tokens)
    - `OPENAI_API_KEY`, optional `OPENAI_BASE_URL` / `ENRICHMENT_MODEL`
 4. Google Cloud Console → OAuth client → Authorized redirect URIs, add:
    ```
    <NEXT_PUBLIC_SITE_URL>/api/youtube/callback
+   ```
+   Add the Facebook callback in the Meta app settings:
+   ```
+   <NEXT_PUBLIC_SITE_URL>/api/facebook/callback
    ```
 5. Supabase Dashboard → Authentication → URL Configuration:
    - Site URL = `<NEXT_PUBLIC_SITE_URL>`

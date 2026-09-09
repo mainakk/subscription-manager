@@ -68,6 +68,7 @@ export function FilterBar({ filters, onChange, visibleCount, totalCount }: Filte
           >
             <option value="all">All platforms</option>
             <option value="youtube">YouTube</option>
+            <option value="facebook">Facebook</option>
           </Select>
           <Select
             id="status-filter"

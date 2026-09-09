@@ -27,6 +27,8 @@ function requestErrorMessage(code: string): string {
       return "YouTube access expired. Disconnect and reconnect, then try again.";
     case "invalid_request":
       return "Too many items selected at once (max 50). Select fewer and retry.";
+    case "mixed_platforms":
+      return "Select sources from one platform at a time.";
     default:
       return "Unsubscribe failed before starting. Try again.";
   }

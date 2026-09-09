@@ -36,6 +36,8 @@ export function UnsubscribeDialog({
   }, [open, onCancel]);
 
   if (!open) return null;
+  const hasFacebook = sources.some((source) => source.platform === "facebook");
+  const hasYoutube = sources.some((source) => source.platform === "youtube");
 
   return (
     <div
@@ -50,13 +52,13 @@ export function UnsubscribeDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="unsubscribe-title" className="text-lg font-semibold">
-          Unsubscribe from these {sources.length}{" "}
+          {hasFacebook && !hasYoutube ? "Remove these " : "Unsubscribe from these "}{sources.length}{" "}
           {sources.length === 1 ? "source" : "sources"}?
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          This removes the selected subscriptions from your YouTube account.
-          It cannot be undone automatically — you would have to resubscribe
-          manually.
+          {hasFacebook && !hasYoutube
+            ? "Facebook Page removal is local-only. It does not unfollow, delete, or change the Page on Facebook."
+            : "This removes the selected subscriptions from your YouTube account. It cannot be undone automatically — you would have to resubscribe manually."}
         </p>
         <ul className="mt-4 max-h-48 space-y-1 overflow-y-auto rounded-md border border-input p-3 text-sm">
           {sources.map((source) => (
@@ -81,7 +83,7 @@ export function UnsubscribeDialog({
             onClick={onConfirm}
             disabled={pending || sources.length === 0}
           >
-            {pending ? "Unsubscribing…" : "Confirm unsubscribe"}
+            {pending ? "Removing…" : hasFacebook && !hasYoutube ? "Confirm local removal" : "Confirm unsubscribe"}
           </Button>
         </div>
       </div>

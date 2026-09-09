@@ -25,6 +25,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 interface DashboardSearchParams {
   connected?: string;
+  facebook_connected?: string;
+  facebook_oauth?: string;
   oauth?: string;
   sync?: string;
 }
@@ -101,19 +103,19 @@ export default async function DashboardPage({
     .from("platform_connections")
     .select("*")
     .eq("user_id", user.id)
-    .eq("platform", "youtube")
-    .limit(1);
-  const connection = ((connectionData?.[0] ?? null) as PlatformConnectionRow | null);
+  const connections = (connectionData ?? []) as PlatformConnectionRow[];
+  const connection = connections.find((row) => row.platform === "youtube") ?? null;
+  const facebookConnection = connections.find((row) => row.platform === "facebook") ?? null;
 
   const { data: sourcesData } = await supabase
     .from("sources")
     .select("*")
     .eq("user_id", user.id)
-    .eq("platform", "youtube")
     .order("name");
   const sources = ((sourcesData ?? []) as SourceRow[]);
 
   const connected = connection?.status === "connected";
+  const facebookConnected = facebookConnection?.status === "connected";
 
   const meta: EnrichmentMeta = { enrichments: {}, recommendations: {} };
   if (connected && sources.length > 0) {
@@ -162,7 +164,7 @@ export default async function DashboardPage({
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Your Sources</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              YouTube subscriptions, imported into one list.
+              YouTube subscriptions and managed Facebook Pages, imported into one list.
             </p>
           </div>
           <Link
@@ -175,6 +177,11 @@ export default async function DashboardPage({
 
         <div className="mt-6 flex flex-col gap-4">
           {params.oauth ? <OAuthBanner code={params.oauth} /> : null}
+          {params.facebook_oauth === "denied" ? (
+            <div className="rounded-md border border-input bg-muted p-3 text-sm">You declined Facebook access. Nothing was imported.</div>
+          ) : params.facebook_oauth ? (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm">Could not connect Facebook. Please try again.</div>
+          ) : null}
           {params.sync ? <SyncBanner code={params.sync} /> : null}
 
           <section className="rounded-lg border border-border bg-card p-4">
@@ -213,9 +220,30 @@ export default async function DashboardPage({
             )}
           </section>
 
-          {params.connected === "1" && connected ? <AutoSync /> : null}
+          <section className="rounded-lg border border-border bg-card p-4">
+            {facebookConnected ? (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-medium">Facebook connected</p>
+                  <p className="text-sm text-muted-foreground">
+                    Managed Pages only. Groups, followed Pages, and arbitrary public profiles are not supported by current Meta APIs.
+                    {" "}Last sync: {formatSyncTime(facebookConnection?.last_sync_at ?? null)}
+                  </p>
+                </div>
+                <div className="flex items-start gap-3"><SyncButton platform="facebook" /><DisconnectButton platform="facebook" /></div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div><p className="font-medium">Connect Facebook</p><p className="text-sm text-muted-foreground">Discover Pages you manage. Page removal is local-only.</p></div>
+                <a href="/api/facebook/connect" className={buttonVariants({})}>Connect Facebook</a>
+              </div>
+            )}
+          </section>
 
-          {connected ? (
+          {params.connected === "1" && connected ? <AutoSync /> : null}
+          {params.facebook_connected === "1" && facebookConnected ? <AutoSync platform="facebook" /> : null}
+
+          {connected || facebookConnected ? (
             <>
               <EnrichPanel summary={summary} aiConfigured={aiConfigured} />
               <SourcesExplorer sources={sources} meta={meta} />
