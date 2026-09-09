@@ -115,3 +115,23 @@ sync while libraries are small).
   button with progress), category + recommendation filters and sorts,
   enriched cards (category line, AI description, topic chips, verdict +
   reason). Search also covers subcategory, topics, and category slugs.
+
+## M4 scope (polish + delete data + deploy)
+
+- Sorting is complete (`name` / `newest` / `oldest` / `category` /
+  `recommendation`); platform filter exists as `all` / `youtube` —
+  single-option today, proving the adapter abstraction is extensible.
+- Delete data: `POST /api/account/delete-data` revokes the YouTube grant
+  best-effort, then deletes all owned rows via `executeDeleteUserData`
+  (`lib/account/delete-user-data.ts`, injected deps for tests) — action
+  batches, sources (enrichments/recommendations/actions cascade), and
+  connections — returning counts. The auth account is kept (empty library
+  on next sign-in). UI is a two-step inline confirm (`DeleteDataButton`).
+  No schema changes (deletes only).
+- Quota/error UX: user-facing text lives in `lib/error-messages.ts`
+  (`requestErrorMessage`, `enrichFailureMessage`, allowlisted
+  `KNOWN_SYNC_ERROR_CODES`), shared by SyncButton, EnrichPanel (route
+  errors + per-item failure reasons, no raw codes), the dashboard
+  `?sync=<code>` banner (AutoSync passes the code through), and the
+  humanized connection `last_error` line.
+- Deploy: runbook in `docs/deploy.md`; no `vercel.json` (Next.js preset).

@@ -10,7 +10,8 @@ YouTube is the first supported platform. The domain model is platform-independen
 
 ## Current Status
 
-MVP under active development. Implemented and working:
+MVP complete and deployed to Vercel (runbook: `docs/deploy.md`).
+Implemented and working:
 
 - Sign-in with Google or email magic link (Supabase Auth)
 - YouTube connection via Google OAuth (minimal `youtube.readonly` + `youtube.force-ssl` scopes)
@@ -21,6 +22,8 @@ MVP under active development. Implemented and working:
 - AI Cleanup summary panel (analyzed / verdict / stale counts)
 - Bulk unsubscribe with review dialog, explicit confirmation, per-item success/failure reporting, and retry of failures
 - Action history: an audit log of every bulk operation with per-item outcomes
+- Data & privacy: one-click deletion of all owned rows (sources, analysis, history, connection) with explicit confirm
+- Consistent quota/error UX: actionable messages with retry guidance on sync, analysis, and per-item failures
 
 AI analysis requires an OpenAI-compatible API key. Without one, the app runs normally but shows setup guidance instead of the Analyze button.
 
@@ -110,6 +113,7 @@ Open [http://localhost:3000](http://localhost:3000), sign in, connect YouTube fr
 | `OPENAI_API_KEY` | For AI analysis | API key for the OpenAI-compatible enrichment endpoint |
 | `OPENAI_BASE_URL` | No | Endpoint base URL (default `https://api.openai.com/v1`); point at any compatible endpoint |
 | `ENRICHMENT_MODEL` | No | Model name sent to the endpoint (default `gpt-4o-mini`); recorded per row for traceability |
+| `ENRICH_DEBUG` | No | Set to `1` to log model-output validation diagnostics (server console only) |
 
 Never commit `.env.local` or any real credentials. When checking configuration, refer to variable names only — never print values.
 
@@ -119,20 +123,23 @@ Never commit `.env.local` or any real credentials. When checking configuration, 
 app/                      # Routes: dashboard, history, login, auth callback
   api/youtube/            # OAuth connect/callback, sync, disconnect
   api/sources/            # Bulk unsubscribe, AI enrichment
+  api/account/            # Delete all owned data
   dashboard/ history/ login/
 components/
   sources/                # Explorer, cards, filters, bulk bar, dialogs, AI panel
-  connection/ layout/ ui/ # Sync/disconnect buttons, nav, shadcn primitives
+  connection/ layout/ ui/ # Sync/disconnect/delete-data buttons, nav, shadcn primitives
 lib/
+  account/                # Delete-user-data orchestration
   platforms/youtube/      # YouTube API client, schemas, normalization
   youtube/                # OAuth flow, AES-256-GCM token crypto
   sources/                # Filter/sort, bulk-unsubscribe and enrichment orchestration
   ai/                     # OpenAI-compatible enrichment client and prompt
   supabase/               # Browser/server/admin clients, session helpers
+  error-messages.ts       # Shared user-facing failure text
   db/                     # Database row types
-supabase/migrations/      # Versioned SQL migrations (0001_init.sql)
+supabase/migrations/      # Versioned SQL migrations (0001_init, 0002 categories)
 tests/ (+ fixtures/)      # Vitest suites
-docs/                     # product.md, architecture.md, database.md
+docs/                     # product.md, architecture.md, database.md, deploy.md, progress.md
 proxy.ts                  # Supabase session handling (Next.js 16 convention)
 ```
 

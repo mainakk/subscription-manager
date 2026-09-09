@@ -94,4 +94,4 @@ Status assessed 2026-09-08:
 - [x] Vercel deploy — `docs/deploy.md` runbook (env vars, OAuth redirect
   URI, Supabase Auth URLs, smoke checklist) linked from README. No
   `vercel.json` needed (Next.js preset); production build verified.
-  Actual first deploy + smoke run still manual (see report).
+  First deploy done and verified (user report 2026-09-08).

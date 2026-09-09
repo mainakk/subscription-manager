@@ -45,6 +45,10 @@ The current MVP is:
 11. Record destructive actions.
 12. Provide clear success/failure reporting.
 
+Status: all 12 items are implemented and deployed (M0–M4, see
+`docs/progress.md`). Keep this list as the scope boundary: fix and polish
+inside it, expand beyond it only when explicitly requested.
+
 RSS and other platforms are future integrations and must not complicate the initial implementation.
 
 ---
@@ -146,7 +150,7 @@ Use (pinned in `package.json`; do not assume older APIs):
 * YouTube Data API
 * Google OAuth
 * OpenAI-compatible LLM API for AI enrichment
-* Vercel-compatible deployment
+* Vercel deployment (live; runbook in `docs/deploy.md`)
 * Vitest for unit tests (`tests/`, `npm run test`)
 
 Prefer server-side code for secrets, OAuth, external API calls, and privileged database operations.
@@ -175,19 +179,23 @@ app/
   api/
     youtube/
     sources/
+    account/          # delete-data (M4)
   dashboard/
   history/
   login/
   ...
 
 components/
-  connection/
+  connection/         # SyncButton, DisconnectButton, DeleteDataButton, AutoSync
   layout/
   sources/
   ui/
 
 lib/
+  account/            # delete-user-data orchestration (M4)
+  ai/                 # enrichment client + prompt (M3)
   categories.ts
+  error-messages.ts   # shared user-facing failure text (M4)
   validation.ts
   utils.ts
   db/
@@ -207,6 +215,8 @@ docs/
   product.md
   architecture.md
   database.md
+  deploy.md
+  progress.md
 
 proxy.ts
 components.json
@@ -298,6 +308,10 @@ Initial categories:
 Subcategories and topics may be generated or extended later, but top-level categories must remain controlled.
 
 The category taxonomy should be easy to modify without rewriting application logic.
+
+Keep all four in sync when the taxonomy changes: `lib/categories.ts`
+(source of truth), the `categories` seed migration (new migration, never
+edit applied ones), this list, and `docs/product.md` (25 items as of M4).
 
 ---
 
@@ -455,6 +469,17 @@ Decided bulk semantics (implemented in `lib/sources/unsubscribe.ts`):
 * Local state (`status = 'unsubscribed'`) changes only after confirmed
   external success, per item.
 
+Decided delete-data semantics (implemented in
+`lib/account/delete-user-data.ts`, `POST /api/account/delete-data`):
+
+* Revokes the YouTube grant best-effort first, then deletes all owned
+  rows: action batches, sources (enrichments, recommendations, and action
+  items cascade), and connections. Returns counts.
+* The auth account is kept — the user signs in to an empty library.
+  Deleting the auth user itself is a separate, explicitly requested step.
+* UI (`DeleteDataButton`) requires a two-step inline confirm; the action
+  is irreversible.
+
 ---
 
 # Database
@@ -598,7 +623,10 @@ Business logic should have tests.
 
 Tests run with Vitest (`npm run test` / `vitest run`); suites live in
 `tests/` with fixtures in `tests/fixtures/`. Keep pure orchestration
-testable via injected dependencies (see `lib/sources/unsubscribe.ts`).
+testable via injected dependencies (see `lib/sources/unsubscribe.ts`,
+`lib/account/delete-user-data.ts`). User-facing failure text lives in
+`lib/error-messages.ts` so SyncButton, the dashboard banner, and
+EnrichPanel agree — add codes there instead of inline switch statements.
 
 Prioritize tests for:
 
@@ -631,6 +659,12 @@ Do not commit:
 * user subscription data
 
 Before committing, check for accidentally staged secrets.
+
+Line endings: the repo is LF (`.gitattributes` sets `text=auto`, so git
+commits LF regardless of checkout OS). Never convert line endings as a
+drive-by. If a diff shows whole-file changes, confirm with
+`git diff --ignore-cr-at-eol` — anything beyond real changes is noise,
+not a fix to commit.
 
 Never run:
 
@@ -710,6 +744,9 @@ For a feature to be considered complete:
 * No unrelated behavior was broken.
 * Schema changes are applied via the migration workflow and verified
   against the linked project (tables, seed rows, constraints, RLS).
+* Deploy-affecting changes follow `docs/deploy.md`: env vars set for the
+  right Vercel environment, then redeploy (`NEXT_PUBLIC_*` bake in at
+  build time and are stale otherwise).
 
 <!-- BEGIN:nextjs-agent-rules -->
 

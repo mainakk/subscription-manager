@@ -1,7 +1,9 @@
-# Database (M0)
+# Database (M0, extended in M4)
 
-Migration: `supabase/migrations/0001_init.sql` + `0002_add_engineering_category.sql`. All changes via migrations;
-no ad-hoc production mutations.
+Migrations: `supabase/migrations/0001_init.sql` (schema) +
+`0002_add_engineering_category.sql` (taxonomy addition — the pattern for
+future category changes: new migration, never edit applied ones).
+All changes via migrations; no ad-hoc production mutations.
 
 ## Tables
 
@@ -30,15 +32,17 @@ restricts to `auth.uid() = user_id` (directly, or via `sources` join for
 enrichments/recommendations). Service-role bypasses RLS and must scope by
 `user_id` in code.
 
-## Local verification without Docker
+## Verification (remote project, no local Docker)
 
-Supabase CLI + Docker are unavailable in this environment, so the migration
-has not been applied to a live database. Before M1, apply with either:
+The Supabase CLI works against the linked project without local Docker:
 
 ```
-supabase db push            # linked project, CLI installed
-# or paste 0001_init.sql into the Supabase SQL editor (review-only)
+npx supabase migration list   # pending vs applied
+npx supabase db push          # apply pending supabase/migrations/*.sql
+npx supabase db query --linked "<read-only SQL>"
 ```
 
-M1 must confirm the migration applies cleanly before building OAuth/sync
-on top of it.
+Verify seed rows, constraints, and RLS with read-only queries (e.g.
+`select slug, name, sort_order from public.categories order by
+sort_order`). Prefer this over a direct Postgres connection, which needs
+`SUPABASE_DB_PASSWORD`.
